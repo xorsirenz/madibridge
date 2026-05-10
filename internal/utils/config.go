@@ -22,7 +22,7 @@ type MatrixConfig struct {
 	RoomID      string `json:"room_id"`
 }
 
-func loadConfig(path string) (*Config, error) {
+func loadConfig() (*Config, error) {
 	configFile, err := os.ReadFile("config.json")
 	if err != nil {
 		return nil, err
