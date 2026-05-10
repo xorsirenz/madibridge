@@ -1,0 +1,2 @@
+# madibridge
+matrix-discord bridge
