@@ -1,10 +1,14 @@
-module madibridge
+module github.com/xorsirenz/madibridge
 
 go 1.26.2
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0
+	maunium.net/go/mautrix v0.27.0
+)
+
+require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -19,5 +23,4 @@ require (
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	maunium.net/go/mautrix v0.27.0 // indirect
 )
