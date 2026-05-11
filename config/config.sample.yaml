@@ -1,0 +1,12 @@
+matrix:
+  homeserver: "https://matrix.example.com"
+  user_id: "@USER_ID:example.com"
+  access_token: "ACCESS_TOKEN"
+  room_id: "!ROOM_ID:example.com"
+
+discord:
+  token: "DISCORD_TOKEN"
+  channel_id: "CHANNEL_ID"
+
+db:
+  dsn: "postgres://bridgeuser:bridgepass@db:5432/bridgedb?sslmode=disable"
