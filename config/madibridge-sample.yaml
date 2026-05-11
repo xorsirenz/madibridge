@@ -9,4 +9,4 @@ discord:
   channel_id: "CHANNEL_ID"
 
 db:
-  dsn: "postgres://bridgeuser:bridgepass@db:5432/bridgedb?sslmode=disable"
+  dsn: "postgres://username:securepassword@localhost:5432/madibridge?sslmode=disable"

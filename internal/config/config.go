@@ -28,7 +28,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	configPath := os.Getenv("CONFIG_FILE")
 	if configPath == "" {
-		configPath = "config.yaml"
+		configPath = "madibridge.yaml"
 	}
 
 	data, err := os.ReadFile(configPath)
