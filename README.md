@@ -5,6 +5,21 @@
 - \>= [golang v1.26.2](https://go.dev/)
 - \>= [postgreSQL v11](https://www.postgresql.org)
 
+### Discord bot requirements:
+#### Intents:
+- Message Content Intent
+#### OAuth2 Scope:
+##### - bot
+    - View Channels
+    - Send Messages
+    - Manage Messages
+    - Embed Links
+    - Attach Files
+    - Send Messages in Threads
+    - Read Message History
+    - Add Reactions
+    - Manage Webhooks
+
 ## Installation:
 ```sh
 $ git clone https://github.com/xorsirenz/madibridge
