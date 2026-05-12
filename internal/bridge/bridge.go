@@ -33,10 +33,10 @@ type Bridge struct {
 }
 
 type MessageMap struct {
-	DiscordID string
-	MatrixID string
+	DiscordID           string
+	MatrixID            string
 	DiscordWebhookMsgID string
-	Username string
+	Username            string
 }
 
 // creates a new bridge
@@ -126,8 +126,8 @@ func (b *Bridge) setupHandlers() {
 
 		if err := b.storeMessageMap(MessageMap{
 			DiscordID: m.ID,
-			MatrixID: string(resp.EventID),
-			Username: m.Author.Username,
+			MatrixID:  string(resp.EventID),
+			Username:  m.Author.Username,
 		}); err != nil {
 			log.Println("failed to store map:", err)
 		}
@@ -174,8 +174,6 @@ func (b *Bridge) setupHandlers() {
 			log.Println("matrix edit message error:", err)
 		}
 	})
-
-
 
 	// matrix -> discord
 	syncer := mautrix.NewDefaultSyncer()
@@ -248,10 +246,10 @@ func (b *Bridge) setupHandlers() {
 		}
 
 		err = b.storeMessageMap(MessageMap{
-			DiscordID: msg.ID, 
-			MatrixID: string(evt.ID), 
-			DiscordWebhookMsgID: msg.ID, 
-			Username: displayName,
+			DiscordID:           msg.ID,
+			MatrixID:            string(evt.ID),
+			DiscordWebhookMsgID: msg.ID,
+			Username:            displayName,
 		})
 
 		if err != nil {
