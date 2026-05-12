@@ -77,19 +77,17 @@ func (b *Bridge) setupHandlers() {
 		}
 
 		contentBody := m.Content
+		var parts []string
 
-		if len(m.Attachments) > 0 {
-			var sb strings.Builder
-
-			sb.WriteString(contentBody)
-
-			for _, a := range m.Attachments {
-				sb.WriteString("\n")
-				sb.WriteString(a.URL)
-			}
-
-			contentBody = sb.String()
+		if m.Content != "" {
+			parts = append(parts, m.Content)
 		}
+
+		for _, a := range m.Attachments {
+			parts = append(parts, a.URL)
+		}
+
+		contentBody = strings.Join(parts, "\n")
 
 		msgContent := &event.MessageEventContent{
 			MsgType: event.MsgText,
@@ -129,7 +127,14 @@ func (b *Bridge) setupHandlers() {
 	})
 
 	b.discord.AddHandler(func(s *discordgo.Session, m *discordgo.MessageUpdate) {
-		if m.Author == nil || m.Author.Bot || m.ChannelID != b.cfg.Discord.ChannelID {
+		if m.Author == nil ||
+			m.Author.Bot ||
+			m.WebhookID != "" ||
+			m.ChannelID != b.cfg.Discord.ChannelID {
+			return
+		}
+
+		if m.Content == "" {
 			return
 		}
 
@@ -144,15 +149,15 @@ func (b *Bridge) setupHandlers() {
 			event.EventMessage,
 			&event.MessageEventContent{
 				MsgType: event.MsgText,
-				Body: "* " + m.Content,
+				Body:    "* " + m.Content,
 
 				NewContent: &event.MessageEventContent{
 					MsgType: event.MsgText,
-					Body: m.Content,
+					Body:    m.Content,
 				},
 
 				RelatesTo: &event.RelatesTo{
-					Type: event.RelReplace,
+					Type:    event.RelReplace,
 					EventID: id.EventID(matrixID),
 				},
 			},
@@ -162,6 +167,8 @@ func (b *Bridge) setupHandlers() {
 			log.Println("matrix edit message error:", err)
 		}
 	})
+
+
 
 	// matrix -> discord
 	syncer := mautrix.NewDefaultSyncer()
@@ -284,7 +291,13 @@ func (b *Bridge) ensureTables() error {
 	_, err := b.db.Exec(`
 		CREATE TABLE IF NOT EXISTS message_map (
 			discord_id TEXT UNIQUE,
-			matrix_id TEXT UNIQUE
+			matrix_id TEXT UNIQUE,
+			discord_webhook_msg_id TEXT
+		);
+
+		CREATE TABLE IF NOT EXISTS bridge_state (
+			key TEXT PRIMARY KEY,
+			value TEXT
 		);
 	`)
 	return err
@@ -295,7 +308,7 @@ func (b *Bridge) storeMessageMap(discordID, matrixID, discordWebhookID string) e
 		INSERT INTO message_map(
 			discord_id, 
 			matrix_id,
-			discord_webhook_id
+			discord_webhook_msg_id
 		)
 		VALUES($1, $2, $3)
 		ON CONFLICT DO NOTHING
@@ -332,12 +345,39 @@ func (b *Bridge) getDiscordWebhookID(matrixID string) (string, error) {
 	var webhookID string
 
 	err := b.db.QueryRow(`
-		SELECT discord_webhook_id
+		SELECT discord_webhook_msg_id
 		FROM message_map
-		WHERE matrix_id$1
+		WHERE matrix_id=$1
 	`, matrixID).Scan(&webhookID)
 
 	return webhookID, err
+}
+
+func (b *Bridge) getSyncToken() string {
+	var token string
+
+	err := b.db.QueryRow(`
+		SELECT value
+		FROM bridge_state
+		WHERE key='sync_token'
+	`).Scan(&token)
+
+	if err != nil {
+		return ""
+	}
+
+	return token
+}
+
+func (b *Bridge) setSyncToken(token string) error {
+	_, err := b.db.Exec(`
+		INSERT INTO bridge_state(key, value)
+		VALUES('sync_token', $1)
+		ON CONFLICT(key)
+		DO UPDATE SET value=EXCLUDED.value
+	`, token)
+
+	return err
 }
 
 // starts the bridge and handles shutdown
@@ -360,15 +400,47 @@ func (b *Bridge) Run() error {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// start matrix sync
+	b.matrix.Store.SaveNextBatch(
+		context.Background(),
+		id.UserID(b.cfg.Matrix.UserID),
+		b.getSyncToken(),
+	)
+
 	go func() {
 		defer close(syncDone)
-		if err := b.matrix.Sync(); err != nil {
-			log.Println("matrix sync error:", err)
-		} else {
-			log.Println("matrix sync ended gracefully")
+		for {
+			err := b.matrix.Sync()
+
+			if err != nil {
+				log.Println("matrix sync error:", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			break
 		}
 	}()
 	log.Println("matrix sync started")
+
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+
+			token, err := b.matrix.Store.LoadNextBatch(
+				context.Background(),
+				id.UserID(b.cfg.Matrix.UserID),
+			)
+			if err != nil {
+				continue
+			}
+
+			if token != "" {
+				err := b.setSyncToken(token)
+				if err != nil {
+					log.Println("failed saving sync token:", err)
+				}
+			}
+		}
+	}()
 
 	// wait for shutdown signal or sync completion
 	select {
