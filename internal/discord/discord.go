@@ -22,7 +22,8 @@ func New(token string, channelID string) (*Client, error) {
 	}
 
 	dg.Identify.Intents = discordgo.IntentsGuildMessages |
-		discordgo.IntentsMessageContent
+		discordgo.IntentsMessageContent |
+		discordgo.IntentsGuildMessageReactions
 
 	return &Client{
 		Session:   dg,
@@ -65,21 +66,42 @@ func (c *Client) ensureWebhook() (*discordgo.Webhook, error) {
 	return webhook, nil
 }
 
-func (c *Client) SendMessage(displayName, avatarURL, content string) error {
+func (c *Client) SendMessage(displayName, avatarURL, content string, replyTo string) (*discordgo.Message, error) {
 	if c.Webhook == nil {
-		return fmt.Errorf("webhook not initialized")
+		return nil, fmt.Errorf("webhook not initialized")
 	}
 
-	_, err := c.Session.WebhookExecute(
+	params := &discordgo.WebhookParams{
+		Content: content,
+		Username: displayName,
+		AvatarURL: avatarURL,
+	}
+
+	if replyTo != "" {
+		content = fmt.Sprintf("replying to `%s`\n%s", replyTo, content)
+		params.Content = content
+	}
+
+
+	message, err := c.Session.WebhookExecute(
 		c.Webhook.ID,
 		c.Webhook.Token,
-		false, 
-		&discordgo.WebhookParams{
-			Content:   content,
-			Username:  displayName,
-			AvatarURL: avatarURL,
+		true, 
+		params,
+	)
+	return message, err
+}
+
+func (c *Client) EditMessage(messageID, content string) error {
+	_, err := c.Session.WebhookMessageEdit(
+		c.Webhook.ID,
+		c.Webhook.Token,
+		messageID,
+		&discordgo.WebhookEdit{
+			Content: &content,
 		},
 	)
+
 	return err
 }
 
