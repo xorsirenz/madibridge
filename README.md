@@ -1,6 +1,5 @@
 # madibridge
-matrix-discord bridge
-bad.. dont use (ever)
+<code>matrix-discord bridge.. its bad so dont use(ever)</code>
 
 ## Requirements:
 - \>= [golang v1.26.2](https://go.dev/)
