@@ -7,6 +7,8 @@ import (
 	"github.com/xorsirenz/madibridge/internal/config"
 )
 
+var version string
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
