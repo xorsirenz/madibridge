@@ -7,24 +7,27 @@
 
 ## Installation:
 ```sh
-git clone https://github.com/xorsirenz/madibridge
-cd madibridge
+$ git clone https://github.com/xorsirenz/madibridge
+$ cd madibridge
 
 # copy sample config to the root directory
-cp config/madibridge-sample.yaml madibridge.yaml
+$ cp config/madibridge-sample.yaml madibridge.yaml
 ```
-#### Setting up PostgreSQL
+#### Setting up PostgreSQL:
 ```sh
 # create a postgreSQL user
 # postgreSQL will prompt a pass word for the new user
-sudo -u postgres createuser -P madibridge
+$ sudo -u postgres createuser -P madibridge
 
 # create a postgreSQL database madibridge with the owner as madibridge
-sudo -u postgres createdb -O madibridge madibridge
+$ sudo -u postgres createdb -O madibridge madibridge
 ```
 
-#### Run madibridge
+#### Build and run:
 ```sh
-go build -o app/madibridge cmd/madibridge/madibridge
-./app/madibridge
+# build
+$ make
+
+# usage
+$ ./madibridge
 ```
