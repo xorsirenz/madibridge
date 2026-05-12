@@ -60,6 +60,10 @@ func New(cfg *config.Config) (*Bridge, error) {
 		db:          db,
 	}
 
+	if err := b.ensureTables(); err != nil {
+		return nil, fmt.Errorf("failed to create tables: %w", err)
+	}
+
 	b.setupHandlers()
 	return b, nil
 }
@@ -166,7 +170,7 @@ func (b *Bridge) getAvatarURL(ctx context.Context, user id.UserID) string {
 	return avatarURL
 }
 
-// postgres dedup helper
+// postgres dedupe helper
 func (b *Bridge) isEventSent(eventID string) bool {
 	var id string
 	err := b.db.QueryRow(`SELECT event_id FROM sent_events WHERE event_id=$1`, eventID).Scan(&id)
@@ -175,6 +179,16 @@ func (b *Bridge) isEventSent(eventID string) bool {
 
 func (b *Bridge) markEventSent(eventID string) error {
 	_, err := b.db.Exec(`INSERT INTO sent_events(event_id) VALUES($1) ON CONFLICT DO NOTHING`, eventID)
+	return err
+}
+
+// verify table exists
+func (b *Bridge) ensureTables() error {
+	_, err := b.db.Exec(`
+		CREATE TABLE IF NOT EXISTS sent_events (
+			event_id TEXT PRIMARY KEY
+		);
+	`)
 	return err
 }
 
