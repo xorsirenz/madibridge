@@ -25,5 +25,6 @@ sudo -u postgres createdb -O madibridge madibridge
 
 #### Run madibridge
 ```sh
-go build -o app/madibridge /cmd/madibridge/madibridge
+go build -o app/madibridge cmd/madibridge/madibridge
+./app/madibridge
 ```
