@@ -9,7 +9,8 @@
 #### Intents:
 - Message Content Intent
 #### OAuth2 Scope:
-##### - bot
+- bot
+##### Bot Permissions:
     - View Channels
     - Send Messages
     - Manage Messages
