@@ -32,6 +32,13 @@ type Bridge struct {
 	db          *sql.DB
 }
 
+type MessageMap struct {
+	DiscordID string
+	MatrixID string
+	DiscordWebhookMsgID string
+	Username string
+}
+
 // creates a new bridge
 func New(cfg *config.Config) (*Bridge, error) {
 	m, err := matrix.New(cfg.Matrix.Homeserver, cfg.Matrix.UserID, cfg.Matrix.AccessToken)
@@ -96,7 +103,7 @@ func (b *Bridge) setupHandlers() {
 
 		if m.MessageReference != nil {
 			matrixReplyID, err := b.getMatrixID(m.MessageReference.MessageID)
-			if err == nil {
+			if err == nil && matrixReplyID != "" {
 				msgContent.RelatesTo = &event.RelatesTo{
 					InReplyTo: &event.InReplyTo{
 						EventID: id.EventID(matrixReplyID),
@@ -117,11 +124,11 @@ func (b *Bridge) setupHandlers() {
 			return
 		}
 
-		if err := b.storeMessageMap(
-			m.ID,
-			string(resp.EventID),
-			"",
-		); err != nil {
+		if err := b.storeMessageMap(MessageMap{
+			DiscordID: m.ID,
+			MatrixID: string(resp.EventID),
+			Username: m.Author.Username,
+		}); err != nil {
 			log.Println("failed to store map:", err)
 		}
 	})
@@ -205,19 +212,21 @@ func (b *Bridge) setupHandlers() {
 			return
 		}
 
-		replyTo := ""
+		body := content.Body
 
 		if content.RelatesTo != nil && content.RelatesTo.InReplyTo != nil {
-			replyDiscordID, err := b.getDiscordID(
-				string(content.RelatesTo.InReplyTo.EventID),
-			)
+			matrixReplyID := string(content.RelatesTo.InReplyTo.EventID)
+			DiscordID, err := b.getDiscordID(matrixReplyID)
 
-			if err == nil {
-				replyTo = replyDiscordID
+			if err == nil && DiscordID != "" {
+				username, err := b.getDiscordUsername(DiscordID)
+				if err != nil || username == "" {
+					username = DiscordID
+				}
+
+				body = fmt.Sprintf("> %s\n%s", username, body)
 			}
 		}
-
-		body := content.Body
 
 		switch content.MsgType {
 		case event.MsgImage, event.MsgFile, event.MsgVideo:
@@ -230,7 +239,7 @@ func (b *Bridge) setupHandlers() {
 			displayName,
 			avatarURL,
 			body,
-			replyTo,
+			"",
 		)
 
 		if err != nil {
@@ -238,7 +247,12 @@ func (b *Bridge) setupHandlers() {
 			return
 		}
 
-		err = b.storeMessageMap(msg.ID, string(evt.ID), msg.ID)
+		err = b.storeMessageMap(MessageMap{
+			DiscordID: msg.ID, 
+			MatrixID: string(evt.ID), 
+			DiscordWebhookMsgID: msg.ID, 
+			Username: displayName,
+		})
 
 		if err != nil {
 			log.Println("map store error:", err)
@@ -292,7 +306,8 @@ func (b *Bridge) ensureTables() error {
 		CREATE TABLE IF NOT EXISTS message_map (
 			discord_id TEXT UNIQUE,
 			matrix_id TEXT UNIQUE,
-			discord_webhook_msg_id TEXT
+			discord_webhook_msg_id TEXT,
+			discord_username TEXT
 		);
 
 		CREATE TABLE IF NOT EXISTS bridge_state (
@@ -303,16 +318,17 @@ func (b *Bridge) ensureTables() error {
 	return err
 }
 
-func (b *Bridge) storeMessageMap(discordID, matrixID, discordWebhookID string) error {
+func (b *Bridge) storeMessageMap(m MessageMap) error {
 	_, err := b.db.Exec(`
 		INSERT INTO message_map(
 			discord_id, 
 			matrix_id,
-			discord_webhook_msg_id
+			discord_webhook_msg_id,
+			discord_username
 		)
-		VALUES($1, $2, $3)
+		VALUES($1, $2, $3, $4)
 		ON CONFLICT DO NOTHING
-	`, discordID, matrixID, discordWebhookID)
+	`, m.DiscordID, m.MatrixID, m.DiscordWebhookMsgID, m.Username)
 
 	return err
 }
@@ -351,6 +367,18 @@ func (b *Bridge) getDiscordWebhookID(matrixID string) (string, error) {
 	`, matrixID).Scan(&webhookID)
 
 	return webhookID, err
+}
+
+func (b *Bridge) getDiscordUsername(discordID string) (string, error) {
+	var discordName string
+
+	err := b.db.QueryRow(`
+		SELECT discord_username
+		FROM message_map
+		WHERE discord_id=$1
+	`, discordID).Scan(&discordName)
+
+	return discordName, err
 }
 
 func (b *Bridge) getSyncToken() string {
