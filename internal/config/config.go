@@ -12,17 +12,22 @@ type Config struct {
 		Homeserver  string `yaml:"homeserver"`
 		UserID      string `yaml:"user_id"`
 		AccessToken string `yaml:"access_token"`
-		RoomID      string `yaml:"room_id"`
 	} `yaml:"matrix"`
 
 	Discord struct {
 		Token     string `yaml:"token"`
-		ChannelID string `yaml:"channel_id"`
 	} `yaml:"discord"`
+
+	Bridges []ChannelMap `yaml:"bridges"`
 
 	DB struct {
 		DSN string `yaml:"dsn"`
 	} `yaml:"db"`
+}
+
+type ChannelMap struct {
+	DiscordChannelID string `yaml:"discord_channel_id"`
+	MatrixRoomID string `yaml:"matrix_room_id"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -60,14 +65,31 @@ func (c *Config) Validate() error {
 	require(c.Matrix.Homeserver, "matrix.homeserver", &missing)
 	require(c.Matrix.UserID, "matrix.user_id", &missing)
 	require(c.Matrix.AccessToken, "matrix.access_token", &missing)
-	require(c.Matrix.RoomID, "matrix.room_id", &missing)
 	require(c.Discord.Token, "discord.token", &missing)
-	require(c.Discord.ChannelID, "discord.channel_id", &missing)
 	require(c.DB.DSN, "db.dsn", &missing)
 
 	if len(missing) > 0 {
 		return fmt.Errorf("invalid config: missing required fields: %v", missing)
 	}
+	
+	if len(c.Bridges) == 0 {
+		missing = append(missing, "bridges")
+	}
 
+	for i, bridge := range c.Bridges {
+		if bridge.DiscordChannelID == "" {
+			missing = append(
+				missing,
+				fmt.Sprintf("bridges[%d].discord_channel_id", i),
+			)
+		}
+
+		if bridge.MatrixRoomID == "" {
+			missing = append(
+				missing,
+				fmt.Sprintf("bridges[%d].matrix_room_id", i),
+			)
+		}
+	}
 	return nil
 }

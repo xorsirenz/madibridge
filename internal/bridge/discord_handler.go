@@ -23,7 +23,8 @@ func (b *Bridge) onDiscordMessageCreate(
 		return
 	}
 
-	if m.ChannelID != b.cfg.Discord.ChannelID {
+	matrixRoomID, ok := b.discordToMatrix[m.ChannelID]
+	if !ok {
 		return
 	}
 
@@ -49,7 +50,7 @@ func (b *Bridge) onDiscordMessageCreate(
 
 	resp, err := b.matrix.SendMessageEvent(
 		context.Background(),
-		id.RoomID(b.cfg.Matrix.RoomID),
+		id.RoomID(matrixRoomID),
 		event.EventMessage,
 		content,
 	)
@@ -84,11 +85,12 @@ func (b *Bridge) onDiscordMessageUpdate(
 		return
 	}
 
-	if m.ChannelID != b.cfg.Discord.ChannelID {
+	if m.Content == "" {
 		return
 	}
 
-	if m.Content == "" {
+	matrixRoomID, ok := b.discordToMatrix[m.ChannelID]
+	if !ok {
 		return
 	}
 
@@ -99,7 +101,7 @@ func (b *Bridge) onDiscordMessageUpdate(
 
 	_, err = b.matrix.SendMessageEvent(
 		context.Background(),
-		id.RoomID(b.cfg.Matrix.RoomID),
+		id.RoomID(matrixRoomID),
 		event.EventMessage,
 		&event.MessageEventContent{
 			MsgType: event.MsgText,

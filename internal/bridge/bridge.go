@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"log"
 
 	_ "github.com/lib/pq"
 	"maunium.net/go/mautrix/id"
@@ -16,7 +17,9 @@ import (
 type Bridge struct {
 	cfg         *config.Config
 	matrix      *matrix.Client
+	matrixToDiscord map[string]string
 	discord     *discord.Client
+	discordToMatrix map[string]string
 	avatarCache map[id.UserID]string
 	cacheLock   sync.RWMutex
 	db          *sql.DB
@@ -32,7 +35,7 @@ func New(cfg *config.Config) (*Bridge, error) {
 		return nil, err
 	}
 
-	d, err := discord.New(cfg.Discord.Token, cfg.Discord.ChannelID)
+	d, err := discord.New(cfg.Discord.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +49,23 @@ func New(cfg *config.Config) (*Bridge, error) {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 
+	
+	discordToMatrix := make(map[string]string)
+	matrixToDiscord := make(map[string]string)
+
+	for _, br := range cfg.Bridges {
+		discordToMatrix[br.DiscordChannelID] = br.MatrixRoomID
+		matrixToDiscord[br.MatrixRoomID] = br.DiscordChannelID
+	}
+
 	b := &Bridge{
-		cfg:         cfg,
-		matrix:      m,
-		discord:     d,
-		avatarCache: make(map[id.UserID]string),
-		db:          db,
+		cfg:           	 cfg,
+		matrix:     	 m,
+		discord:     	 d,
+		avatarCache: 	 make(map[id.UserID]string),
+		db:          	 db,
+		discordToMatrix: discordToMatrix,
+		matrixToDiscord: matrixToDiscord,
 	}
 
 	if err := b.ensureTables(); err != nil {
@@ -60,6 +74,10 @@ func New(cfg *config.Config) (*Bridge, error) {
 
 	b.registerDiscordHandlers()
 	b.registerMatrixHandlers()
+
+	for d, m := range discordToMatrix {
+		log.Println("bridge mapping:", d, "->", m)
+	}
 
 	return b, nil
 }

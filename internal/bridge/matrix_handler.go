@@ -16,7 +16,8 @@ func (b *Bridge) registerMatrixHandlers() {
 }
 
 func (b *Bridge) onMatrixMessage(ctx context.Context, evt *event.Event) {
-	if evt.RoomID.String() != b.cfg.Matrix.RoomID {
+	discordChannelID, ok := b.matrixToDiscord[evt.RoomID.String()]
+	if !ok {
 		return
 	}
 
@@ -26,7 +27,7 @@ func (b *Bridge) onMatrixMessage(ctx context.Context, evt *event.Event) {
 
 	content := evt.Content.AsMessage()
 
-	if b.handleMatrixEdit(content) {
+	if b.handleMatrixEdit(evt.RoomID.String(), content) {
 		return
 	}
 
@@ -44,6 +45,7 @@ func (b *Bridge) onMatrixMessage(ctx context.Context, evt *event.Event) {
 
 	avatarURL := b.getAvatarURL(ctx, evt.Sender)
 	msg, err := b.discord.SendMessage(
+		discordChannelID,
 		displayName,
 		avatarURL,
 		body,
@@ -65,7 +67,8 @@ func (b *Bridge) onMatrixMessage(ctx context.Context, evt *event.Event) {
 	}
 }
 
-func (b *Bridge) handleMatrixEdit(content *event.MessageEventContent) bool {
+func (b *Bridge) handleMatrixEdit(roomID string, content *event.MessageEventContent) bool {
+	discordChannelID := b.matrixToDiscord[roomID]
 	if content.RelatesTo == nil {
 		return false
 	}
@@ -85,6 +88,7 @@ func (b *Bridge) handleMatrixEdit(content *event.MessageEventContent) bool {
 	}
 
 	if err := b.discord.EditMessage(
+		discordChannelID,
 		webhookMsgID,
 		content.NewContent.Body,
 	); err != nil {

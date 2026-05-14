@@ -11,11 +11,10 @@ const webhookName = "madibridge"
 
 type Client struct {
 	Session   *discordgo.Session
-	ChannelID string
-	Webhook   *discordgo.Webhook
+	Webhooks  map[string]*discordgo.Webhook 
 }
 
-func New(token string, channelID string) (*Client, error) {
+func New(token string) (*Client, error) {
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, err
@@ -26,28 +25,30 @@ func New(token string, channelID string) (*Client, error) {
 		discordgo.IntentsGuildMessageReactions
 
 	return &Client{
-		Session:   dg,
-		ChannelID: channelID,
+		Session:  dg,
+		Webhooks: make(map[string]*discordgo.Webhook),
 	}, nil
 }
 
-func (c *Client) Open() error {
+func (c *Client) Open(channelIDs []string) error {
 	if err := c.Session.Open(); err != nil {
 		return err
 	}
 
-	webhook, err := c.ensureWebhook()
-	if err != nil {
-		return err
-	}
+	for _, channelID := range channelIDs {
+		webhook, err := c.ensureWebhook(channelID)
+		if err != nil {
+			return err
+		}
 
-	c.Webhook = webhook
+		c.Webhooks[channelID] = webhook
+	}
 	log.Println("discord connected and webhook ready")
 	return nil
 }
 
-func (c *Client) ensureWebhook() (*discordgo.Webhook, error) {
-	webhooks, err := c.Session.ChannelWebhooks(c.ChannelID)
+func (c *Client) ensureWebhook(channelID string) (*discordgo.Webhook, error) {
+	webhooks, err := c.Session.ChannelWebhooks(channelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list webhooks: %w", err)
 	}
@@ -58,7 +59,7 @@ func (c *Client) ensureWebhook() (*discordgo.Webhook, error) {
 		}
 	}
 
-	webhook, err := c.Session.WebhookCreate(c.ChannelID, webhookName, "")
+	webhook, err := c.Session.WebhookCreate(channelID, webhookName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook: %w", err)
 	}
@@ -66,10 +67,12 @@ func (c *Client) ensureWebhook() (*discordgo.Webhook, error) {
 	return webhook, nil
 }
 
-func (c *Client) SendMessage(displayName, avatarURL, content string, replyTo string) (*discordgo.Message, error) {
-	if c.Webhook == nil {
-		return nil, fmt.Errorf("webhook not initialized")
+func (c *Client) SendMessage(channelID, displayName, avatarURL, content, replyTo string) (*discordgo.Message, error) {
+	webhook, ok := c.Webhooks[channelID]
+	if !ok {
+		return nil, fmt.Errorf("webhook not found %s", channelID)
 	}
+
 
 	params := &discordgo.WebhookParams{
 		Content: content,
@@ -84,18 +87,23 @@ func (c *Client) SendMessage(displayName, avatarURL, content string, replyTo str
 
 
 	message, err := c.Session.WebhookExecute(
-		c.Webhook.ID,
-		c.Webhook.Token,
+		webhook.ID,
+		webhook.Token,
 		true, 
 		params,
 	)
 	return message, err
 }
 
-func (c *Client) EditMessage(messageID, content string) error {
+func (c *Client) EditMessage(channelID, messageID, content string) error {
+	webhook, ok := c.Webhooks[channelID]
+	if !ok {
+		return fmt.Errorf("webhookd not found %s", channelID)
+	}
+
 	_, err := c.Session.WebhookMessageEdit(
-		c.Webhook.ID,
-		c.Webhook.Token,
+		webhook.ID,
+		webhook.Token,
 		messageID,
 		&discordgo.WebhookEdit{
 			Content: &content,

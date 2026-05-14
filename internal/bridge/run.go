@@ -12,7 +12,13 @@ import (
 )
 
 func (b *Bridge) Run() error {
-	if err := b.discord.Open(); err != nil {
+	var channelIDs []string
+
+	for _, bridges := range b.cfg.Bridges {
+		channelIDs = append(channelIDs, bridges.DiscordChannelID)
+	}
+
+	if err := b.discord.Open(channelIDs); err != nil {
 		return err
 	}
 
