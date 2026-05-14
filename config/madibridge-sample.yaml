@@ -8,5 +8,9 @@ discord:
   token: "DISCORD_TOKEN"
   channel_id: "CHANNEL_ID"
 
+bridges:
+  - discord_channel_id: "CHANNEL_ID"
+    matrix_room_id: "!ROOM_ID:example.com"
+
 db:
   dsn: "postgres://madibridge:securepassword@localhost:5432/madibridge?sslmode=disable"
