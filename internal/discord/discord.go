@@ -10,8 +10,8 @@ import (
 const webhookName = "madibridge"
 
 type Client struct {
-	Session   *discordgo.Session
-	Webhooks  map[string]*discordgo.Webhook 
+	Session  *discordgo.Session
+	Webhooks map[string]*discordgo.Webhook
 }
 
 func New(token string) (*Client, error) {
@@ -73,10 +73,9 @@ func (c *Client) SendMessage(channelID, displayName, avatarURL, content, replyTo
 		return nil, fmt.Errorf("webhook not found %s", channelID)
 	}
 
-
 	params := &discordgo.WebhookParams{
-		Content: content,
-		Username: displayName,
+		Content:   content,
+		Username:  displayName,
 		AvatarURL: avatarURL,
 	}
 
@@ -85,11 +84,10 @@ func (c *Client) SendMessage(channelID, displayName, avatarURL, content, replyTo
 		params.Content = content
 	}
 
-
 	message, err := c.Session.WebhookExecute(
 		webhook.ID,
 		webhook.Token,
-		true, 
+		true,
 		params,
 	)
 	return message, err

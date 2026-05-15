@@ -27,4 +27,3 @@ func New(homeserver, userID, token string) (*Client, error) {
 
 	return &Client{c}, nil
 }
-

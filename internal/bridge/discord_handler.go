@@ -16,7 +16,7 @@ func (b *Bridge) registerDiscordHandlers() {
 }
 
 func (b *Bridge) onDiscordMessageCreate(
-	s *discordgo.Session, 
+	s *discordgo.Session,
 	m *discordgo.MessageCreate,
 ) {
 	if m.Author.Bot {

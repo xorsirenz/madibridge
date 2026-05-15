@@ -15,7 +15,7 @@ type Config struct {
 	} `yaml:"matrix"`
 
 	Discord struct {
-		Token     string `yaml:"token"`
+		Token string `yaml:"token"`
 	} `yaml:"discord"`
 
 	Bridges []ChannelMap `yaml:"bridges"`
@@ -27,7 +27,7 @@ type Config struct {
 
 type ChannelMap struct {
 	DiscordChannelID string `yaml:"discord_channel_id"`
-	MatrixRoomID string `yaml:"matrix_room_id"`
+	MatrixRoomID     string `yaml:"matrix_room_id"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -71,7 +71,7 @@ func (c *Config) Validate() error {
 	if len(missing) > 0 {
 		return fmt.Errorf("invalid config: missing required fields: %v", missing)
 	}
-	
+
 	if len(c.Bridges) == 0 {
 		missing = append(missing, "bridges")
 	}

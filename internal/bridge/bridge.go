@@ -3,8 +3,8 @@ package bridge
 import (
 	"database/sql"
 	"fmt"
-	"sync"
 	"log"
+	"sync"
 
 	_ "github.com/lib/pq"
 	"maunium.net/go/mautrix/id"
@@ -15,14 +15,14 @@ import (
 )
 
 type Bridge struct {
-	cfg         *config.Config
-	matrix      *matrix.Client
+	cfg             *config.Config
+	matrix          *matrix.Client
 	matrixToDiscord map[string]string
-	discord     *discord.Client
+	discord         *discord.Client
 	discordToMatrix map[string]string
-	avatarCache map[id.UserID]string
-	cacheLock   sync.RWMutex
-	db          *sql.DB
+	avatarCache     map[id.UserID]string
+	cacheLock       sync.RWMutex
+	db              *sql.DB
 }
 
 func New(cfg *config.Config) (*Bridge, error) {
@@ -49,7 +49,6 @@ func New(cfg *config.Config) (*Bridge, error) {
 		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 
-	
 	discordToMatrix := make(map[string]string)
 	matrixToDiscord := make(map[string]string)
 
@@ -59,13 +58,13 @@ func New(cfg *config.Config) (*Bridge, error) {
 	}
 
 	b := &Bridge{
-		cfg:           	 cfg,
-		matrix:     	 m,
-		discord:     	 d,
-		avatarCache: 	 make(map[id.UserID]string),
-		db:          	 db,
-		discordToMatrix: discordToMatrix,
+		cfg:             cfg,
+		matrix:          m,
 		matrixToDiscord: matrixToDiscord,
+		discord:         d,
+		discordToMatrix: discordToMatrix,
+		avatarCache:     make(map[id.UserID]string),
+		db:              db,
 	}
 
 	if err := b.ensureTables(); err != nil {
