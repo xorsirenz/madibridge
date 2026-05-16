@@ -19,38 +19,21 @@ func (b *Bridge) onDiscordMessageCreate(
 	s *discordgo.Session,
 	m *discordgo.MessageCreate,
 ) {
-	if m.Author.Bot {
+
+	if isIgnoredMessage(m.Author) {
 		return
 	}
 
-	matrixRoomID, ok := b.discordToMatrix[m.ChannelID]
+	roomID, ok := b.matrixRoomID(m.ChannelID)
 	if !ok {
 		return
 	}
 
-	var parts []string
-
-	if m.Content != "" {
-		parts = append(parts, m.Content)
-	}
-
-	for _, attachment := range m.Attachments {
-		parts = append(parts, attachment.URL)
-	}
-
-	body := strings.Join(parts, "\n")
-	content := &event.MessageEventContent{
-		MsgType: event.MsgText,
-		Body:    body,
-	}
-
-	if m.MessageReference != nil {
-		b.applyDiscordReply(content, m.MessageReference.MessageID)
-	}
+	content := b.buildMessageContent(m.Message)
 
 	resp, err := b.matrix.SendMessageEvent(
 		context.Background(),
-		id.RoomID(matrixRoomID),
+		roomID,
 		event.EventMessage,
 		content,
 	)
@@ -73,23 +56,11 @@ func (b *Bridge) onDiscordMessageUpdate(
 	s *discordgo.Session,
 	m *discordgo.MessageUpdate,
 ) {
-	if m.Author == nil {
+	if shouldIgnoreUpdate(m) {
 		return
 	}
 
-	if m.Author.Bot {
-		return
-	}
-
-	if m.WebhookID != "" {
-		return
-	}
-
-	if m.Content == "" {
-		return
-	}
-
-	matrixRoomID, ok := b.discordToMatrix[m.ChannelID]
+	roomID, ok := b.matrixRoomID(m.ChannelID)
 	if !ok {
 		return
 	}
@@ -101,27 +72,37 @@ func (b *Bridge) onDiscordMessageUpdate(
 
 	_, err = b.matrix.SendMessageEvent(
 		context.Background(),
-		id.RoomID(matrixRoomID),
+		roomID,
 		event.EventMessage,
-		&event.MessageEventContent{
-			MsgType: event.MsgText,
-			Body:    "* " + m.Content,
-
-			NewContent: &event.MessageEventContent{
-				MsgType: event.MsgText,
-				Body:    m.Content,
-			},
-
-			RelatesTo: &event.RelatesTo{
-				Type:    event.RelReplace,
-				EventID: id.EventID(matrixID),
-			},
-		},
+		buildEditContent(m.Content, matrixID),
 	)
 
 	if err != nil {
 		log.Println("matrix edit error:", err)
 	}
+}
+
+func (b *Bridge) buildMessageContent(m *discordgo.Message) *event.MessageEventContent {
+	var parts []string
+
+	if m.Content != "" {
+		parts = append(parts, m.Content)
+	}
+
+	for _, attachment := range m.Attachments {
+		parts = append(parts, attachment.URL)
+	}
+
+	content := &event.MessageEventContent{
+		MsgType: event.MsgText,
+		Body:    strings.Join(parts, "\n"),
+	}
+
+	if m.MessageReference != nil {
+		b.applyDiscordReply(content, m.MessageReference.MessageID)
+	}
+
+	return content
 }
 
 func (b *Bridge) applyDiscordReply(
@@ -139,4 +120,40 @@ func (b *Bridge) applyDiscordReply(
 			EventID: id.EventID(matrixReplyID),
 		},
 	}
+}
+
+func buildEditContent(
+	body string,
+	matrixID string,
+) *event.MessageEventContent {
+	return &event.MessageEventContent{
+		MsgType: event.MsgText,
+		Body:    "* " + body,
+
+		NewContent: &event.MessageEventContent{
+			MsgType: event.MsgText,
+			Body:    body,
+		},
+
+		RelatesTo: &event.RelatesTo{
+			Type:    event.RelReplace,
+			EventID: id.EventID(matrixID),
+		},
+	}
+}
+
+func isIgnoredMessage(author *discordgo.User) bool {
+	return author == nil || author.Bot
+}
+
+func shouldIgnoreUpdate(m *discordgo.MessageUpdate) bool {
+	return m.Author == nil ||
+		m.Author.Bot ||
+		m.WebhookID != "" ||
+		m.Content == ""
+}
+
+func (b *Bridge) matrixRoomID(channelID string) (id.RoomID, bool) {
+	roomID, ok := b.discordToMatrix[channelID]
+	return id.RoomID(roomID), ok
 }
