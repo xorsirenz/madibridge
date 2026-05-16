@@ -1,3 +1,4 @@
+# madibrige matrix to discord bridge
 matrix:
   homeserver: "https://matrix.example.com"
   user_id: "@USER_ID:example.com"
@@ -11,6 +12,9 @@ discord:
 bridges:
   - discord_channel_id: "CHANNEL_ID"
     matrix_room_id: "!ROOM_ID:example.com"
+# to add multiple bridges:
+# - discord_channel_id: ""
+#   matrix_room_id: ""
 
 db:
   dsn: "postgres://madibridge:securepassword@localhost:5432/madibridge?sslmode=disable"
