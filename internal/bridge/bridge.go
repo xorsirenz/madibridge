@@ -52,9 +52,16 @@ func New(cfg *config.Config) (*Bridge, error) {
 	discordToMatrix := make(map[string]string)
 	matrixToDiscord := make(map[string]string)
 
-	for _, br := range cfg.Bridges {
-		discordToMatrix[br.DiscordChannelID] = br.MatrixRoomID
-		matrixToDiscord[br.MatrixRoomID] = br.DiscordChannelID
+	for i, br := range cfg.Bridges {
+		resolvedMatrixRoom, err := m.ResolveMatrixRoom(br.MatrixRoomID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve room %s %w", br.MatrixRoomID, err)
+		}
+
+		cfg.Bridges[i].MatrixRoomID = resolvedMatrixRoom
+
+		discordToMatrix[br.DiscordChannelID] = resolvedMatrixRoom
+		matrixToDiscord[resolvedMatrixRoom] = br.DiscordChannelID
 	}
 
 	b := &Bridge{
