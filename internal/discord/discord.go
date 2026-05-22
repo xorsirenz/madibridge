@@ -96,7 +96,7 @@ func (c *Client) SendMessage(channelID, displayName, avatarURL, content, replyTo
 func (c *Client) EditMessage(channelID, messageID, content string) error {
 	webhook, ok := c.Webhooks[channelID]
 	if !ok {
-		return fmt.Errorf("webhookd not found %s", channelID)
+		return fmt.Errorf("webhook not found %s", channelID)
 	}
 
 	_, err := c.Session.WebhookMessageEdit(
