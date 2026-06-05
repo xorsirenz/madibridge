@@ -23,7 +23,12 @@ func New(homeserver, userID, token string) (*Client, error) {
 	}
 
 	c.Client = &http.Client{
-		Transport: utils.RoundTripper{},
+		Transport: &utils.LoggingRoundTripper{
+			LogRequests:     false,
+			LogResponses:    true,
+			PrettyPrintJSON: true,
+			MaxBodySize:     32 * 1024,
+		},
 	}
 
 	c.UserAgent = "madibridge/0.1"

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/xorsirenz/madibridge/internal/bridge"
@@ -16,19 +16,30 @@ func main() {
 		utils.HandleCmd(version)
 	}
 
+	logger := slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}),
+	)
+
+	slog.SetDefault(logger)
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("failed to load config:", err)
+		logger.Error("failed to load config:", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	bridge, err := bridge.New(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("failed to create bridge", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	log.Println("Bridge running")
+	logger.Info("Bridge running")
 
 	if err := bridge.Run(); err != nil {
-		log.Fatal(err)
+		logger.Error("bridge stopped", slog.Any("error", err))
+		os.Exit(1)
 	}
 }
